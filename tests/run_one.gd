@@ -14,7 +14,7 @@ func _process(_delta: float) -> bool:
 		return true
 	var script_path: String = args[0]
 	var scr: Script = load(script_path) as Script
-	if scr == null:
+	if scr == null or not scr.can_instantiate():
 		printerr("FAIL: could not load %s" % script_path)
 		quit(1)
 		return true
