@@ -1,9 +1,9 @@
-extends SceneTree
+extends RefCounted
 
 
-func _initialize() -> void:
+func run(tree: SceneTree) -> void:
 	var t := TestAssert.new()
-	var gs: Node = root.get_node("GameState")
+	var gs: Node = tree.root.get_node("GameState")
 	gs.reset_run()
 
 	# Stage cadence: % 5 -> BOSS, else % 3 -> CHALLENGE, else STANDARD
@@ -56,4 +56,4 @@ func _initialize() -> void:
 	var ch_end: Vector3 = WavePatterns.sample_challenge_path(0, 1.0)
 	t.is_true(ch_end.z >= 10.0, "challenge path exits past player")
 
-	t.finish(self, "test_game_state")
+	t.finish(tree, "test_game_state")
