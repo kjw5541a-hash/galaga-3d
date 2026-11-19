@@ -38,6 +38,8 @@ var rapid_timer: float = 0.0
 var emp_charges: int = 0
 var lockon_energy: float = MAX_ENERGY
 var is_game_over: bool = false
+var touch_move: Vector2 = Vector2.ZERO
+var touch_auto_fire: bool = false
 var _next_extra_life: int = FIRST_EXTRA_LIFE
 
 
@@ -65,6 +67,7 @@ func reset_run() -> void:
 	emp_charges = 1
 	lockon_energy = MAX_ENERGY
 	is_game_over = false
+	touch_move = Vector2.ZERO
 	_next_extra_life = FIRST_EXTRA_LIFE
 	score_changed.emit(score, high_score)
 	lives_changed.emit(lives)

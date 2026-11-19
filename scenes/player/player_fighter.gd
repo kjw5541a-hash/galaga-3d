@@ -110,8 +110,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		_ship_visual_root.visible = true
 
-	var move_x: float = Input.get_axis("move_left", "move_right")
-	var move_y: float = Input.get_axis("move_down", "move_up")
+	var move_x: float = clampf(Input.get_axis("move_left", "move_right") + GameState.touch_move.x, -1.0, 1.0)
+	var move_y: float = clampf(Input.get_axis("move_down", "move_up") + GameState.touch_move.y, -1.0, 1.0)
 	var fine_aim := Vector2(Input.get_joy_axis(0, JOY_AXIS_RIGHT_X), Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y))
 	if fine_aim.length() < 0.2:
 		fine_aim = Vector2.ZERO
@@ -135,7 +135,7 @@ func _physics_process(delta: float) -> void:
 
 	reticle_rig.update_aim(global_position, Vector2(move_x, move_y), fine_aim)
 
-	if Input.is_action_pressed("fire_primary") and _fire_cd <= 0.0:
+	if (Input.is_action_pressed("fire_primary") or GameState.touch_auto_fire) and _fire_cd <= 0.0:
 		_fire_primary_volley()
 	if Input.is_action_pressed("fire_lockon"):
 		_locking = true

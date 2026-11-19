@@ -19,6 +19,7 @@ var _overlay_box: CenterContainer
 var _overlay_title: Label
 var _overlay_hint: Label
 var _bracket_layer: Control
+var _touch_controls: TouchControls = null
 var _banner_timer: float = 0.0
 var _mode: String = "title"
 var _enter_was_down: bool = false
@@ -152,6 +153,40 @@ func _build_ui() -> void:
 	ov.add_child(_overlay_title)
 	ov.add_child(_overlay_hint)
 
+	_touch_controls = TouchControls.new()
+	add_child(_touch_controls)
+	_touch_controls.pause_tapped.connect(func() -> void: pause_toggle_requested.emit())
+	_touch_controls.mute_tapped.connect(func() -> void: SfxManager.toggle_mute())
+
+
+func _sync_touch_visibility() -> void:
+	if not is_instance_valid(_touch_controls):
+		return
+	var show_touch: bool = TouchControls.is_mobile_environment() and not _overlay_box.visible
+	_touch_controls.set_active(show_touch)
+
+
+func _input(event: InputEvent) -> void:
+	if not _overlay_box.visible:
+		return
+	var tapped: bool = (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
+	var clicked: bool = (
+		event is InputEventMouseButton
+		and (event as InputEventMouseButton).pressed
+		and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT
+	)
+	if tapped or clicked:
+		_trigger_overlay_confirm()
+
+
+func _trigger_overlay_confirm() -> void:
+	if _mode == "title":
+		start_requested.emit()
+	elif _mode == "game_over":
+		restart_requested.emit()
+	elif _mode == "pause":
+		resume_requested.emit()
+
 
 func _make_label(txt: String, size: int, col: Color) -> Label:
 	var l := Label.new()
@@ -178,12 +213,7 @@ func _process(delta: float) -> void:
 		return
 	if _overlay_box.visible:
 		if Input.is_action_just_pressed("fire_primary") or enter_just_pressed:
-			if _mode == "title":
-				start_requested.emit()
-			elif _mode == "game_over":
-				restart_requested.emit()
-			elif _mode == "pause":
-				resume_requested.emit()
+			_trigger_overlay_confirm()
 
 
 func _on_score_changed(s: int, hi: int) -> void:
@@ -218,15 +248,22 @@ func show_title(visible_flag: bool) -> void:
 	var record_line: String = ""
 	if GameState.high_score > 0:
 		record_line = "HIGH SCORE: %d   |   BEST STAGE: %d\n\n" % [GameState.high_score, GameState.best_stage]
-	_overlay_hint.text = "%sWASD/Stick Move  |  Z/Space/A Fire  |  X/RB Lock-On  |  Shift/B Roll  |  V/Y EMP  |  M Mute\n\nPress FIRE or ENTER to Launch" % record_line
+	var controls_line: String = (
+		"Left Thumb Move  |  FIRE / AUTO  |  LOCK Missiles  |  ROLL  |  EMP\n\nTap Anywhere to Launch"
+		if TouchControls.is_mobile_environment()
+		else "WASD/Stick Move  |  Z/Space/A Fire  |  X/RB Lock-On  |  Shift/B Roll  |  V/Y EMP  |  M Mute\n\nPress FIRE, ENTER, or Click to Launch"
+	)
+	_overlay_hint.text = "%s%s" % [record_line, controls_line]
 	_overlay_box.visible = visible_flag
+	_sync_touch_visibility()
 
 
 func show_pause(visible_flag: bool) -> void:
 	_mode = "pause"
 	_overlay_title.text = "PAUSED"
-	_overlay_hint.text = "Press ESC / Start or FIRE to Resume   |   M Mute"
+	_overlay_hint.text = "Tap or Press ESC / FIRE to Resume   |   M Mute"
 	_overlay_box.visible = visible_flag
+	_sync_touch_visibility()
 
 
 func show_game_over(final_score: int, hi_score: int) -> void:
@@ -236,9 +273,10 @@ func show_game_over(final_score: int, hi_score: int) -> void:
 	_overlay_hint.text = (
 		"FINAL SCORE: %d   |   HIGH SCORE: %d   |   STAGE: %d\n"
 		+ "SHOTS %d   |   HITS %d   |   HIT-MISS RATIO %.1f%%   |   DESTROYED %d\n\n"
-		+ "Press FIRE or ENTER to Retry"
+		+ "Tap or Press FIRE / ENTER to Retry"
 	) % [final_score, hi_score, GameState.stage, GameState.shots_fired, GameState.shots_hit, acc, GameState.enemies_destroyed]
 	_overlay_box.visible = true
+	_sync_touch_visibility()
 
 
 func set_boss_bar(visible_flag: bool, ratio: float = 1.0, phase: int = 1) -> void:
