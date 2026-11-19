@@ -46,6 +46,7 @@ var _dive_side: float = 1.0
 var _tractor_hold: float = 0.0
 var _tractor_aim_y: float = 0.0
 var _stun_timer: float = 0.0
+var _hit_flash_timer: float = 0.0
 var _fired_in_dive: bool = false
 var _dead: bool = false
 
@@ -150,6 +151,11 @@ func _mark_dead_and_unlink() -> void:
 func _physics_process(delta: float) -> void:
 	if _dead or GameState.is_game_over:
 		return
+	if _hit_flash_timer > 0.0:
+		_hit_flash_timer = maxf(0.0, _hit_flash_timer - delta)
+		if is_instance_valid(_visual):
+			var s: float = 1.0 + (_hit_flash_timer / 0.12) * 0.28
+			_visual.scale = Vector3(s, s, s)
 	if _stun_timer > 0.0:
 		_stun_timer = maxf(0.0, _stun_timer - delta)
 		rotation.y += delta * 12.0
@@ -295,10 +301,14 @@ func take_damage(amount: int, _from_missile: bool = false) -> void:
 	if hp > 0:
 		if archetype == Archetype.BOSS_GALAGA:
 			_rebuild_visual(true)
+		_hit_flash_timer = 0.12
 		SfxManager.play("hit")
 		return
 	_mark_dead_and_unlink()
 	_despawn_beam()
+	if is_instance_valid(get_parent()):
+		var fx_scale: float = 1.45 if archetype == Archetype.BOSS_GALAGA else 1.0
+		VfxBurst.spawn(get_parent(), global_position, _explosion_color(), fx_scale, 7)
 	var was_diving: bool = (state == State.DIVING or state == State.TRACTOR_BEAM)
 	if is_instance_valid(captured_child) and not captured_child.is_dead() and captured_child.state == State.CAPTURED_ATTACHED:
 		if was_diving:
@@ -324,6 +334,18 @@ func take_damage(amount: int, _from_missile: bool = false) -> void:
 	SfxManager.play("explode")
 	destroyed.emit(self, pts, should_drop, global_position)
 	queue_free()
+
+
+func _explosion_color() -> Color:
+	match archetype:
+		Archetype.ZAKO:
+			return Color(1.0, 0.72, 0.12)
+		Archetype.GOEI:
+			return Color(1.0, 0.22, 0.58)
+		Archetype.BOSS_GALAGA:
+			return Color(0.22, 1.0, 0.45)
+		_:
+			return Color(1.0, 0.25, 0.28)
 
 
 func _compute_score(was_diving: bool) -> int:

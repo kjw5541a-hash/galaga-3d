@@ -15,6 +15,8 @@ var _fov_kick: float = 0.0
 var _in_run: bool = false
 var _transitioning: bool = false
 var _run_id: int = 0
+var _hitstop_end_usec: int = 0
+var _last_boss_pos: Vector3 = Vector3(0.0, 1.5, -55.0)
 
 
 func _ready() -> void:
@@ -31,8 +33,27 @@ func _ready() -> void:
 	_hud.show_title(true)
 
 
+func _exit_tree() -> void:
+	_clear_hitstop()
+
+
+func trigger_hitstop(duration: float = 0.055) -> void:
+	if duration <= 0.0 or get_tree().paused:
+		return
+	var target_end: int = Time.get_ticks_usec() + int(duration * 1000000.0)
+	_hitstop_end_usec = maxi(_hitstop_end_usec, target_end)
+	Engine.time_scale = 0.08
+
+
+func _clear_hitstop() -> void:
+	_hitstop_end_usec = 0
+	Engine.time_scale = 1.0
+
+
 func _on_emp_triggered() -> void:
 	_shake_trauma = minf(1.0, _shake_trauma + 0.55)
+	var origin: Vector3 = _player.global_position if is_instance_valid(_player) else Vector3.ZERO
+	VfxBurst.spawn_shockwave(_world_root, origin, Color(0.68, 0.32, 1.0), 22.0, 0.55)
 
 
 func _build_environment_and_tunnel() -> void:
@@ -81,9 +102,12 @@ func _build_environment_and_tunnel() -> void:
 
 func _start_new_run() -> void:
 	_run_id += 1
+	_clear_hitstop()
 	get_tree().paused = false
 	_clear_world()
 	GameState.reset_run()
+	SfxManager.start_bgm()
+	SfxManager.set_bgm_ducked(false)
 	_hud.show_title(false)
 	_hud.show_pause(false)
 	_hud.set_boss_bar(false)
@@ -100,6 +124,9 @@ func _start_new_run() -> void:
 
 func _on_player_damaged(_remaining_lives: int) -> void:
 	_shake_trauma = minf(1.0, _shake_trauma + 0.65)
+	trigger_hitstop(0.045)
+	if is_instance_valid(_player):
+		VfxBurst.spawn(_world_root, _player.global_position, Color(1.0, 0.45, 0.2), 1.35, 8, 0.38)
 
 
 func _on_barrel_roll_started() -> void:
@@ -128,6 +155,7 @@ func _launch_stage(stage_num: int) -> void:
 			_world_root.add_child(boss)
 			boss.setup_boss(stage_num, _player)
 			boss.boss_hp_changed.connect(func(r: float, ph: int) -> void: _hud.set_boss_bar(true, r, ph))
+			boss.boss_part_destroyed.connect(_on_boss_part_destroyed)
 			boss.boss_defeated.connect(_on_boss_defeated)
 			_active_encounter = boss
 		GameState.StageType.CHALLENGE:
@@ -177,15 +205,36 @@ func _on_challenge_completed(hits: int, total: int, wave_bonuses: int, perfect_b
 		_launch_stage(GameState.stage)
 
 
+func _on_boss_part_destroyed(world_pos: Vector3) -> void:
+	_last_boss_pos = world_pos
+	_shake_trauma = minf(1.0, _shake_trauma + 0.65)
+	trigger_hitstop(0.055)
+
+
 func _on_boss_defeated(award: int) -> void:
 	if _transitioning or GameState.is_game_over:
 		return
 	_transitioning = true
 	var run_token: int = _run_id
+	if is_instance_valid(_active_encounter):
+		_last_boss_pos = _active_encounter.global_position
 	_shake_trauma = 1.0
+	trigger_hitstop(0.085)
 	_hud.set_boss_bar(false)
 	_hud.show_banner("DREADNOUGHT DESTROYED", "+%d  |  SHIELD RECHARGED" % award, 3.0)
-	await get_tree().create_timer(3.2, false).timeout
+	var offsets: Array[Vector3] = [
+		Vector3(-4.5, 1.5, 2.0),
+		Vector3(4.5, -1.2, 2.0),
+		Vector3(0.0, 2.2, 3.0),
+	]
+	for off: Vector3 in offsets:
+		await get_tree().create_timer(0.28, false).timeout
+		if run_token != _run_id or GameState.is_game_over or not _in_run:
+			return
+		_shake_trauma = minf(1.0, _shake_trauma + 0.45)
+		VfxBurst.spawn(_world_root, _last_boss_pos + off, Color(1.0, 0.42, 0.16), 2.6, 10, 0.55)
+		SfxManager.play("explode")
+	await get_tree().create_timer(2.3, false).timeout
 	if run_token == _run_id and not GameState.is_game_over and _in_run:
 		GameState.advance_stage()
 		_transitioning = false
@@ -204,6 +253,8 @@ func _on_player_captured(_boss: Node3D) -> void:
 
 
 func _on_game_over() -> void:
+	_clear_hitstop()
+	SfxManager.stop_bgm()
 	_in_run = false
 	_hud.set_boss_bar(false)
 	_hud.show_game_over(GameState.score, GameState.high_score)
@@ -213,11 +264,16 @@ func _toggle_pause() -> void:
 	if not _in_run or GameState.is_game_over:
 		return
 	var next_pause: bool = not get_tree().paused
+	if next_pause:
+		_clear_hitstop()
 	get_tree().paused = next_pause
+	SfxManager.set_bgm_ducked(next_pause)
 	_hud.show_pause(next_pause)
 
 
 func _process(delta: float) -> void:
+	if _hitstop_end_usec > 0 and Time.get_ticks_usec() >= _hitstop_end_usec:
+		_clear_hitstop()
 	# Scroll neon corridor depth rings
 	for ring: MeshInstance3D in _depth_rings:
 		ring.position.z += 58.0 * delta

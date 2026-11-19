@@ -22,6 +22,7 @@ var _bracket_layer: Control
 var _banner_timer: float = 0.0
 var _mode: String = "title"
 var _enter_was_down: bool = false
+var _mute_was_down: bool = false
 
 
 func _ready() -> void:
@@ -34,6 +35,11 @@ func _ready() -> void:
 	GameState.emp_changed.connect(_on_int_status_changed)
 	GameState.energy_changed.connect(_on_energy_changed)
 	GameState.stage_changed.connect(_on_stage_changed)
+	SfxManager.mute_changed.connect(_on_mute_changed)
+	_refresh_status()
+
+
+func _on_mute_changed(_muted: bool) -> void:
 	_refresh_status()
 
 
@@ -162,6 +168,10 @@ func _process(delta: float) -> void:
 	var enter_down: bool = Input.is_key_pressed(KEY_ENTER)
 	var enter_just_pressed: bool = enter_down and not _enter_was_down
 	_enter_was_down = enter_down
+	var mute_down: bool = Input.is_key_pressed(KEY_M)
+	if mute_down and not _mute_was_down:
+		SfxManager.toggle_mute()
+	_mute_was_down = mute_down
 	if Input.is_action_just_pressed("pause"):
 		pause_toggle_requested.emit()
 		return
@@ -188,8 +198,9 @@ func _on_stage_changed(st: int, st_type: int) -> void:
 func _refresh_status() -> void:
 	var mode_str: String = "DUAL" if GameState.fighter_mode == GameState.FighterMode.DUAL else "SINGLE"
 	var rapid_str: String = ("  RAPID %.0fs" % GameState.rapid_timer) if GameState.rapid_timer > 0.0 else ""
-	_status_lbl.text = "LIVES %d  |  %s  |  SHIELD %d  |  EMP %d%s  |  LOCK-ON ENERGY" % [
-		GameState.lives, mode_str, GameState.shield_count, GameState.emp_charges, rapid_str
+	var mute_str: String = "  |  [MUTE]" if SfxManager.is_muted else ""
+	_status_lbl.text = "LIVES %d  |  %s  |  SHIELD %d  |  EMP %d%s  |  LOCK-ON ENERGY%s" % [
+		GameState.lives, mode_str, GameState.shield_count, GameState.emp_charges, rapid_str, mute_str
 	]
 
 
