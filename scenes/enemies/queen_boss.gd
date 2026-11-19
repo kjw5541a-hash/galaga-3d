@@ -99,6 +99,7 @@ func _physics_process(delta: float) -> void:
 	_sway_t += delta * (1.25 if phase == 2 else 0.75)
 	var lunge_z: float = sin(_sway_t * 1.4) * 8.0 if phase == 2 else 0.0
 	global_position = Vector3(sin(_sway_t) * 6.0, sin(_sway_t * 2.0) * 2.0 + 1.5, -55.0 + lunge_z)
+	rotation = Vector3(-0.16 + sin(_sway_t * 2.0) * 0.08, cos(_sway_t) * 0.18, -cos(_sway_t) * 0.08)
 
 	if left_hp > 0:
 		_cannon_timer -= delta
@@ -177,11 +178,12 @@ func _on_emp_triggered() -> void:
 func _tint_core_crimson() -> void:
 	if not is_instance_valid(_core_area):
 		return
-	var crimson := MeshFactory.make_neon_mat(Color(1.0, 0.14, 0.2), Color(1.0, 0.14, 0.2), 3.6)
+	var dark_red := MeshFactory.make_hull_mat(Color(0.55, 0.12, 0.16), 0.65, 0.30, 0.85, 0.16)
+	var crimson_glow := MeshFactory.make_neon_mat(Color(1.0, 0.18, 0.24), Color(1.0, 0.12, 0.18), 2.3)
 	for child: Node in _core_area.get_children():
 		for sub: Node in child.get_children():
 			if sub is MeshInstance3D:
-				(sub as MeshInstance3D).material_override = crimson
+				(sub as MeshInstance3D).material_override = crimson_glow if sub.name == "CoreCrystal" else dark_red
 
 
 func _destroy_part_area(area: BossPartArea) -> void:
@@ -229,7 +231,8 @@ func apply_part_damage(part_name: String, raw_damage: int) -> int:
 	if core_hp <= 0:
 		_defeated = true
 		_destroy_part_area(_core_area)
-		var award: int = 5000 * maxi(1, int(_stage_num / 5))
+		@warning_ignore("integer_division")
+		var award: int = 5000 * maxi(1, _stage_num / 5)
 		GameState.add_score(award)
 		GameState.grant_powerup(GameState.PowerupType.SHIELD)
 		SfxManager.play("boss_explode")

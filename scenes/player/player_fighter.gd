@@ -57,7 +57,11 @@ func _build_shield_bubble() -> void:
 	sm.radius = 1.55
 	sm.height = 3.1
 	_shield_bubble.mesh = sm
-	_shield_bubble.material_override = MeshFactory.make_neon_mat(Color(0.2, 0.95, 1.0), Color(0.2, 0.95, 1.0), 1.8, 0.25)
+	var shield_mat := MeshFactory.make_neon_mat(Color(0.2, 0.9, 1.0), Color(0.18, 0.85, 1.0), 0.25, 0.08)
+	shield_mat.rim_enabled = true
+	shield_mat.rim = 0.85
+	shield_mat.rim_tint = 0.85
+	_shield_bubble.material_override = shield_mat
 	_shield_bubble.visible = GameState.shield_count > 0
 	_ship_visual_root.add_child(_shield_bubble)
 

@@ -16,13 +16,20 @@ sky_material = SubResource("1")
 background_mode = 2
 sky = SubResource("2")
 ambient_light_source = 2
-ambient_light_color = Color(0.25, 0.35, 0.55, 1)
-ambient_light_energy = 0.65
+ambient_light_color = Color(0.14, 0.18, 0.3, 1)
+ambient_light_energy = 0.28
 tonemap_mode = 3
 glow_enabled = true
-glow_intensity = 1.1
-glow_strength = 1.05
-glow_bloom = 0.28
+glow_intensity = 0.55
+glow_strength = 0.85
+glow_bloom = 0.06
+glow_hdr_threshold = 1.15
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.018, 0.022, 0.055, 1)
+fog_density = 0.55
+fog_depth_begin = 70.0
+fog_depth_end = 195.0
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
@@ -31,8 +38,20 @@ script = ExtResource("1")
 environment = SubResource("3")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.939693, -0.17101, 0.296198, 0, 0.866025, 0.5, -0.34202, -0.469846, 0.813798, 0, 15, 10)
-light_energy = 1.4
+transform = Transform3D(0.743145, -0.411791, 0.527362, 0, 0.788011, 0.615661, -0.669131, -0.457526, 0.585606, 0, 18, 12)
+light_color = Color(1, 0.96, 0.9, 1)
+light_energy = 2.1
+shadow_enabled = true
+
+[node name="RimLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.819152, -0.214873, -0.531807, 0, 0.927184, -0.374607, 0.573576, -0.306859, -0.759505, 0, -8, -40)
+light_color = Color(0.35, 0.75, 1, 1)
+light_energy = 1.35
+
+[node name="FillLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.573576, 0.579228, -0.579228, 0, 0.707107, 0.707107, 0.819152, -0.40558, 0.40558, 0, -14, 6)
+light_color = Color(0.32, 0.24, 0.62, 1)
+light_energy = 0.55
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 12.5)

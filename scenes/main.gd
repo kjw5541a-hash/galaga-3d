@@ -36,34 +36,41 @@ func _on_emp_triggered() -> void:
 
 
 func _build_environment_and_tunnel() -> void:
-	# Streaming 3D starfield GPUParticles3D
+	# Peripheral 3D starfield (hollow ring outside combat corridor, below glow threshold)
 	var stars := GPUParticles3D.new()
-	stars.amount = 360
-	stars.lifetime = 3.2
-	stars.preprocess = 3.2
+	stars.amount = 180
+	stars.lifetime = 3.8
+	stars.preprocess = 3.8
 	stars.position = Vector3(0.0, 0.0, -175.0)
 	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(45.0, 26.0, 4.0)
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3(0.0, 0.0, 1.0)
+	pm.emission_ring_height = 12.0
+	pm.emission_ring_radius = 70.0
+	pm.emission_ring_inner_radius = 24.0
 	pm.direction = Vector3(0.0, 0.0, 1.0)
 	pm.spread = 0.0
-	pm.initial_velocity_min = 52.0
-	pm.initial_velocity_max = 88.0
+	pm.initial_velocity_min = 38.0
+	pm.initial_velocity_max = 60.0
 	pm.gravity = Vector3.ZERO
 	stars.process_material = pm
 	var star_mesh := BoxMesh.new()
-	star_mesh.size = Vector3(0.14, 0.14, 1.8)
-	star_mesh.material = MeshFactory.make_neon_mat(Color(0.85, 0.95, 1.0), Color(0.7, 0.9, 1.0), 2.4)
+	star_mesh.size = Vector3(0.055, 0.055, 1.2)
+	var star_mat := StandardMaterial3D.new()
+	star_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	star_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	star_mat.albedo_color = Color(0.42, 0.56, 0.82, 0.56)
+	star_mesh.material = star_mat
 	stars.draw_pass_1 = star_mesh
 	add_child(stars)
 
-	# Neon corridor depth rings for speed reference
-	var ring_mat := MeshFactory.make_neon_mat(Color(0.15, 0.45, 0.95), Color(0.15, 0.5, 1.0), 1.6, 0.22)
+	# Subtle outer corridor depth rings (below glow threshold so enemies stay foreground focus)
+	var ring_mat := MeshFactory.make_neon_mat(Color(0.10, 0.24, 0.55), Color(0.10, 0.28, 0.62), 0.42, 0.14)
 	for i: int in range(8):
 		var mi := MeshInstance3D.new()
 		var tm := TorusMesh.new()
-		tm.inner_radius = 22.0
-		tm.outer_radius = 22.28
+		tm.inner_radius = 27.5
+		tm.outer_radius = 27.72
 		mi.mesh = tm
 		mi.rotation_degrees = Vector3(90.0, 0.0, 0.0)
 		mi.position = Vector3(0.0, 0.0, -20.0 - float(i) * 22.0)
@@ -230,7 +237,7 @@ func _update_camera(delta: float) -> void:
 	if not is_instance_valid(_player):
 		return
 	var p: Vector3 = _player.global_position
-	var desired := Vector3(p.x * 0.25, p.y * 0.20 + 3.2, 12.5)
+	var desired := Vector3(p.x * 0.30, p.y * 0.55 + 2.4, 12.5)
 	_camera.global_position = _camera.global_position.lerp(desired, clampf(6.0 * delta, 0.0, 1.0))
 	if _shake_trauma > 0.0:
 		var amp: float = _shake_trauma * _shake_trauma * 0.65
@@ -238,4 +245,4 @@ func _update_camera(delta: float) -> void:
 		_shake_trauma = maxf(0.0, _shake_trauma - delta * 2.2)
 	_fov_kick = lerpf(_fov_kick, 0.0, clampf(6.0 * delta, 0.0, 1.0))
 	_camera.fov = 60.0 + _fov_kick
-	_camera.look_at(Vector3(p.x * 0.15, p.y * 0.10, -35.0), Vector3.UP)
+	_camera.look_at(Vector3(p.x * 0.18, p.y * 0.30, -35.0), Vector3.UP)

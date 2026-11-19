@@ -163,4 +163,5 @@ func get_wave_speed_mult(stage_num: int) -> float:
 
 
 func get_max_divers(stage_num: int) -> int:
-	return mini(5, 2 + int((maxi(1, stage_num) - 1) / 2))
+	@warning_ignore("integer_division")
+	return mini(5, 2 + (maxi(1, stage_num) - 1) / 2)

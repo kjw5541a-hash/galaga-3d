@@ -100,9 +100,18 @@ func _build_ui() -> void:
 
 	_energy_bar = ProgressBar.new()
 	_energy_bar.custom_minimum_size = Vector2(320, 14)
+	_energy_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_energy_bar.max_value = 100.0
 	_energy_bar.value = 100.0
 	_energy_bar.show_percentage = false
+	var bar_bg := StyleBoxFlat.new()
+	bar_bg.bg_color = Color(0.08, 0.12, 0.22, 0.78)
+	bar_bg.set_corner_radius_all(4)
+	var bar_fill := StyleBoxFlat.new()
+	bar_fill.bg_color = Color(0.18, 0.88, 1.0, 0.92)
+	bar_fill.set_corner_radius_all(4)
+	_energy_bar.add_theme_stylebox_override("background", bar_bg)
+	_energy_bar.add_theme_stylebox_override("fill", bar_fill)
 	bottom.add_child(_energy_bar)
 
 	_banner_box = PanelContainer.new()

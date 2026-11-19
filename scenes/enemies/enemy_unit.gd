@@ -155,24 +155,32 @@ func _physics_process(delta: float) -> void:
 		rotation.y += delta * 12.0
 		return
 
+	var prev_pos: Vector3 = global_position
 	match state:
 		State.ENTERING:
 			_t += delta * 0.48 * speed_mult
 			if _t >= 1.0:
 				state = State.FORMATION
 				global_position = slot_world
-				rotation = Vector3.ZERO
+				rotation = Vector3(-0.22, 0.0, 0.0)
 			else:
 				var p: Vector3 = WavePatterns.sample_entry_path(squad_index, _t)
 				var blend: float = smoothstep(0.75, 1.0, _t)
 				global_position = p.lerp(slot_world, blend)
+				var vel: Vector3 = (global_position - prev_pos) / maxf(delta, 0.001)
+				rotation.z = lerpf(rotation.z, clampf(-vel.x * 0.025, -0.7, 0.7), clampf(8.0 * delta, 0.0, 1.0))
+				rotation.x = lerpf(rotation.x, clampf(vel.y * 0.018, -0.45, 0.45), clampf(8.0 * delta, 0.0, 1.0))
 		State.FORMATION:
 			global_position = global_position.lerp(slot_world, clampf(8.0 * delta, 0.0, 1.0))
-			rotation = rotation.lerp(Vector3.ZERO, clampf(6.0 * delta, 0.0, 1.0))
+			var target_rot := Vector3(-0.24, clampf(-global_position.x * 0.015, -0.22, 0.22), 0.0)
+			rotation = rotation.lerp(target_rot, clampf(6.0 * delta, 0.0, 1.0))
 		State.DIVING:
 			_t += delta * 0.36 * speed_mult
 			var base_pos: Vector3 = _dive_start.lerp(Vector3(_dive_target.x, _dive_target.y, 12.0), _t)
 			global_position = base_pos + WavePatterns.sample_dive_offset(archetype, _t, _dive_side)
+			var dive_vel: Vector3 = (global_position - prev_pos) / maxf(delta, 0.001)
+			rotation.z = lerpf(rotation.z, clampf(-dive_vel.x * 0.032, -0.85, 0.85), clampf(10.0 * delta, 0.0, 1.0))
+			rotation.x = lerpf(rotation.x, clampf(dive_vel.y * 0.02 - 0.15, -0.5, 0.4), clampf(10.0 * delta, 0.0, 1.0))
 			if not _fired_in_dive and _t > 0.35 and _t < 0.72 and archetype != Archetype.CAPTURED_FIGHTER:
 				_fired_in_dive = true
 				_fire_enemy_orb()

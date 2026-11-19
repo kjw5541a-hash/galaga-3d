@@ -57,7 +57,8 @@ func _physics_process(delta: float) -> void:
 
 func step_motion(delta: float) -> void:
 	_age += delta
-	if _age >= MAX_LIFETIME or global_position.z < -175.0 or global_position.z > 22.0:
+	var max_z: float = 5.0 if kind == Kind.ENEMY_ORB else 22.0
+	if _age >= MAX_LIFETIME or global_position.z < -175.0 or global_position.z > max_z:
 		queue_free()
 		return
 	if kind == Kind.HOMING_MISSILE:

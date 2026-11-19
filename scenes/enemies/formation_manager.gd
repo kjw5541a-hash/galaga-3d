@@ -44,7 +44,8 @@ func start_standard_wave(stage_num: int, player: PlayerFighter) -> void:
 		for c: int in range(WavePatterns.ROW_COUNTS[r]):
 			all_slots.append({"arch": arch, "row": r, "col": c})
 	for i: int in range(all_slots.size()):
-		var sq: int = int(i / 8)
+		@warning_ignore("integer_division")
+		var sq: int = i / 8
 		var entry: Dictionary = all_slots[i]
 		entry["squad"] = sq
 		entry["delay"] = float(sq) * 1.45 + float(i % 8) * 0.16
