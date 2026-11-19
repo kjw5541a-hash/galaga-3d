@@ -332,6 +332,7 @@ func take_damage(amount: int, _from_missile: bool = false) -> void:
 	elif was_diving and archetype == Archetype.GOEI and randf() < 0.15:
 		should_drop = true
 	SfxManager.play("explode")
+	GameState.record_enemy_destroyed(1)
 	destroyed.emit(self, pts, should_drop, global_position)
 	queue_free()
 

@@ -170,6 +170,7 @@ func _fire_primary_volley() -> void:
 		var muzzle: Vector3 = global_position + off
 		var dir: Vector3 = reticle_rig.compute_assisted_dir(muzzle, candidates)
 		p.setup(Projectile.Kind.PLAYER_LASER, muzzle, dir, speed, 1)
+	GameState.record_shot_fired(offsets.size())
 	SfxManager.play("laser")
 
 
@@ -191,6 +192,7 @@ func _release_homing_missiles() -> void:
 		p.setup(Projectile.Kind.HOMING_MISSILE, global_position + Vector3(side * 1.1, 0.1, -0.5), launch_dir, 95.0, 2, targets[i])
 		fired += 1
 	if fired > 0:
+		GameState.record_shot_fired(fired)
 		SfxManager.play("missile")
 
 

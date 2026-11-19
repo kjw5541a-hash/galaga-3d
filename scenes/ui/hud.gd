@@ -36,6 +36,7 @@ func _ready() -> void:
 	GameState.energy_changed.connect(_on_energy_changed)
 	GameState.stage_changed.connect(_on_stage_changed)
 	SfxManager.mute_changed.connect(_on_mute_changed)
+	_on_score_changed(GameState.score, GameState.high_score)
 	_refresh_status()
 
 
@@ -214,21 +215,29 @@ func show_banner(title: String, subtitle: String, duration: float = 2.0) -> void
 func show_title(visible_flag: bool) -> void:
 	_mode = "title"
 	_overlay_title.text = "GALAGA 3D: VANGUARD"
-	_overlay_hint.text = "WASD/Stick Move  |  Z/Space/A Fire  |  X/RB Lock-On  |  Shift/B Roll  |  V/Y EMP\n\nPress FIRE or ENTER to Launch"
+	var record_line: String = ""
+	if GameState.high_score > 0:
+		record_line = "HIGH SCORE: %d   |   BEST STAGE: %d\n\n" % [GameState.high_score, GameState.best_stage]
+	_overlay_hint.text = "%sWASD/Stick Move  |  Z/Space/A Fire  |  X/RB Lock-On  |  Shift/B Roll  |  V/Y EMP  |  M Mute\n\nPress FIRE or ENTER to Launch" % record_line
 	_overlay_box.visible = visible_flag
 
 
 func show_pause(visible_flag: bool) -> void:
 	_mode = "pause"
 	_overlay_title.text = "PAUSED"
-	_overlay_hint.text = "Press ESC / Start or FIRE to Resume"
+	_overlay_hint.text = "Press ESC / Start or FIRE to Resume   |   M Mute"
 	_overlay_box.visible = visible_flag
 
 
 func show_game_over(final_score: int, hi_score: int) -> void:
 	_mode = "game_over"
 	_overlay_title.text = "GAME OVER"
-	_overlay_hint.text = "FINAL SCORE: %d   |   HIGH SCORE: %d\n\nPress FIRE or ENTER to Retry" % [final_score, hi_score]
+	var acc: float = GameState.get_accuracy_pct()
+	_overlay_hint.text = (
+		"FINAL SCORE: %d   |   HIGH SCORE: %d   |   STAGE: %d\n"
+		+ "SHOTS %d   |   HITS %d   |   HIT-MISS RATIO %.1f%%   |   DESTROYED %d\n\n"
+		+ "Press FIRE or ENTER to Retry"
+	) % [final_score, hi_score, GameState.stage, GameState.shots_fired, GameState.shots_hit, acc, GameState.enemies_destroyed]
 	_overlay_box.visible = true
 
 

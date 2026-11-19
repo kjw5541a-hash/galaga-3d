@@ -21,11 +21,17 @@ const MAX_ENERGY := 100.0
 const ENERGY_REGEN_PER_SEC := 12.0
 const MAX_EMP_CHARGES := 2
 const RAPID_DURATION := 15.0
+const DEFAULT_SAVE_PATH := "user://galaga3d_save.cfg"
 
+var save_path: String = DEFAULT_SAVE_PATH
 var score: int = 0
 var high_score: int = 0
+var best_stage: int = 1
 var lives: int = 3
 var stage: int = 1
+var shots_fired: int = 0
+var shots_hit: int = 0
+var enemies_destroyed: int = 0
 var fighter_mode: FighterMode = FighterMode.SINGLE
 var shield_count: int = 0
 var rapid_timer: float = 0.0
@@ -35,10 +41,24 @@ var is_game_over: bool = false
 var _next_extra_life: int = FIRST_EXTRA_LIFE
 
 
+func _ready() -> void:
+	if DisplayServer.get_name() != "headless":
+		load_profile()
+		SfxManager.mute_changed.connect(_on_mute_changed)
+
+
+func _on_mute_changed(_muted: bool) -> void:
+	if DisplayServer.get_name() != "headless":
+		save_profile()
+
+
 func reset_run() -> void:
 	score = 0
 	lives = 3
 	stage = 1
+	shots_fired = 0
+	shots_hit = 0
+	enemies_destroyed = 0
 	fighter_mode = FighterMode.SINGLE
 	shield_count = 0
 	rapid_timer = 0.0
@@ -56,6 +76,49 @@ func reset_run() -> void:
 	energy_changed.emit(lockon_energy)
 
 
+func record_shot_fired(count: int = 1) -> void:
+	if count > 0:
+		shots_fired += count
+
+
+func record_shot_hit(count: int = 1) -> void:
+	if count > 0:
+		shots_hit += count
+
+
+func record_enemy_destroyed(count: int = 1) -> void:
+	if count > 0:
+		enemies_destroyed += count
+
+
+func get_accuracy_pct() -> float:
+	if shots_fired <= 0:
+		return 0.0
+	return clampf(float(shots_hit) * 100.0 / float(shots_fired), 0.0, 100.0)
+
+
+func save_profile() -> Error:
+	var cfg := ConfigFile.new()
+	cfg.set_value("stats", "high_score", high_score)
+	cfg.set_value("stats", "best_stage", best_stage)
+	cfg.set_value("audio", "muted", SfxManager.is_muted)
+	return cfg.save(save_path)
+
+
+func load_profile() -> Error:
+	var cfg := ConfigFile.new()
+	var err: Error = cfg.load(save_path)
+	if err != OK:
+		return err
+	high_score = maxi(0, int(cfg.get_value("stats", "high_score", 0)))
+	best_stage = maxi(1, int(cfg.get_value("stats", "best_stage", 1)))
+	var saved_mute: bool = bool(cfg.get_value("audio", "muted", false))
+	if SfxManager.is_muted != saved_mute:
+		SfxManager.toggle_mute()
+	score_changed.emit(score, high_score)
+	return OK
+
+
 func get_stage_type(stage_num: int) -> StageType:
 	if stage_num % 5 == 0:
 		return StageType.BOSS
@@ -68,17 +131,25 @@ func add_score(points: int) -> void:
 	if points <= 0:
 		return
 	score += points
+	var new_hi: bool = false
 	if score > high_score:
 		high_score = score
+		new_hi = true
 	while score >= _next_extra_life:
 		lives += 1
 		_next_extra_life += NEXT_EXTRA_LIFE_STEP
 		lives_changed.emit(lives)
 	score_changed.emit(score, high_score)
+	if new_hi and DisplayServer.get_name() != "headless":
+		save_profile()
 
 
 func advance_stage() -> StageType:
 	stage += 1
+	if stage > best_stage:
+		best_stage = stage
+		if DisplayServer.get_name() != "headless":
+			save_profile()
 	var st: StageType = get_stage_type(stage)
 	stage_changed.emit(stage, st)
 	return st
@@ -146,6 +217,8 @@ func lose_life() -> bool:
 	lives_changed.emit(lives)
 	if lives <= 0:
 		is_game_over = true
+		if DisplayServer.get_name() != "headless":
+			save_profile()
 		game_over_triggered.emit()
 		return false
 	return true

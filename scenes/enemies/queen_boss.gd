@@ -362,6 +362,7 @@ func apply_part_damage(part_name: String, raw_damage: int) -> int:
 		@warning_ignore("integer_division")
 		var award: int = 5000 * maxi(1, _stage_num / 5)
 		GameState.add_score(award)
+		GameState.record_enemy_destroyed(1)
 		GameState.grant_powerup(GameState.PowerupType.SHIELD)
 		SfxManager.play("boss_explode")
 		boss_defeated.emit(award)

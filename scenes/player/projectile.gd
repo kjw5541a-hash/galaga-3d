@@ -85,6 +85,7 @@ func _on_area_entered(area: Area3D) -> void:
 			return
 	if kind != Kind.ENEMY_ORB and area.has_method("take_damage"):
 		_consumed = true
+		GameState.record_shot_hit(1)
 		area.call("take_damage", damage, kind == Kind.HOMING_MISSILE)
 		if kind == Kind.PLAYER_LASER:
 			GameState.add_lockon_energy(6.0)
