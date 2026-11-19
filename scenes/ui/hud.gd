@@ -27,14 +27,27 @@ var _enter_was_down: bool = false
 func _ready() -> void:
 	_build_ui()
 	GameState.score_changed.connect(_on_score_changed)
-	GameState.lives_changed.connect(func(_l: int) -> void: _refresh_status())
-	GameState.fighter_mode_changed.connect(func(_m: int) -> void: _refresh_status())
-	GameState.shield_changed.connect(func(_s: int) -> void: _refresh_status())
-	GameState.rapid_changed.connect(func(_r: float) -> void: _refresh_status())
-	GameState.emp_changed.connect(func(_e: int) -> void: _refresh_status())
-	GameState.energy_changed.connect(func(e: float) -> void: _energy_bar.value = e)
+	GameState.lives_changed.connect(_on_int_status_changed)
+	GameState.fighter_mode_changed.connect(_on_int_status_changed)
+	GameState.shield_changed.connect(_on_int_status_changed)
+	GameState.rapid_changed.connect(_on_float_status_changed)
+	GameState.emp_changed.connect(_on_int_status_changed)
+	GameState.energy_changed.connect(_on_energy_changed)
 	GameState.stage_changed.connect(_on_stage_changed)
 	_refresh_status()
+
+
+func _on_int_status_changed(_val: int) -> void:
+	_refresh_status()
+
+
+func _on_float_status_changed(_val: float) -> void:
+	_refresh_status()
+
+
+func _on_energy_changed(e: float) -> void:
+	if is_instance_valid(_energy_bar):
+		_energy_bar.value = e
 
 
 func _build_ui() -> void:
@@ -133,7 +146,7 @@ func _make_label(txt: String, size: int, col: Color) -> Label:
 
 
 func _process(delta: float) -> void:
-	if _banner_timer > 0.0:
+	if not get_tree().paused and _banner_timer > 0.0:
 		_banner_timer -= delta
 		if _banner_timer <= 0.0:
 			_banner_box.visible = false

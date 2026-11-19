@@ -14,6 +14,7 @@ var _shake_trauma: float = 0.0
 var _fov_kick: float = 0.0
 var _in_run: bool = false
 var _transitioning: bool = false
+var _run_id: int = 0
 
 
 func _ready() -> void:
@@ -26,8 +27,12 @@ func _ready() -> void:
 	_hud.resume_requested.connect(_toggle_pause)
 	_hud.pause_toggle_requested.connect(_toggle_pause)
 	GameState.game_over_triggered.connect(_on_game_over)
-	GameState.emp_triggered.connect(func() -> void: _shake_trauma = minf(1.0, _shake_trauma + 0.55))
+	GameState.emp_triggered.connect(_on_emp_triggered)
 	_hud.show_title(true)
+
+
+func _on_emp_triggered() -> void:
+	_shake_trauma = minf(1.0, _shake_trauma + 0.55)
 
 
 func _build_environment_and_tunnel() -> void:
@@ -68,6 +73,7 @@ func _build_environment_and_tunnel() -> void:
 
 
 func _start_new_run() -> void:
+	_run_id += 1
 	get_tree().paused = false
 	_clear_world()
 	GameState.reset_run()
@@ -77,12 +83,20 @@ func _start_new_run() -> void:
 	_player = PLAYER_SCENE.instantiate()
 	_world_root.add_child(_player)
 	_player.respawn_single()
-	_player.damaged.connect(func(_l: int) -> void: _shake_trauma = minf(1.0, _shake_trauma + 0.65))
-	_player.barrel_roll_started.connect(func() -> void: _fov_kick = 5.0)
+	_player.damaged.connect(_on_player_damaged)
+	_player.barrel_roll_started.connect(_on_barrel_roll_started)
 	_player.captured_by_boss.connect(_on_player_captured)
 	_in_run = true
 	_transitioning = false
 	_launch_stage(GameState.stage)
+
+
+func _on_player_damaged(_remaining_lives: int) -> void:
+	_shake_trauma = minf(1.0, _shake_trauma + 0.65)
+
+
+func _on_barrel_roll_started() -> void:
+	_fov_kick = 5.0
 
 
 func _clear_world() -> void:
@@ -131,10 +145,11 @@ func _on_wave_cleared() -> void:
 	if _transitioning or GameState.is_game_over:
 		return
 	_transitioning = true
+	var run_token: int = _run_id
 	SfxManager.play("stage_clear")
 	_hud.show_banner("STAGE %d CLEAR" % GameState.stage, "PREPARING NEXT WAVE", 2.0)
-	await get_tree().create_timer(2.2).timeout
-	if not GameState.is_game_over and _in_run:
+	await get_tree().create_timer(2.2, false).timeout
+	if run_token == _run_id and not GameState.is_game_over and _in_run:
 		GameState.advance_stage()
 		_transitioning = false
 		_launch_stage(GameState.stage)
@@ -144,11 +159,12 @@ func _on_challenge_completed(hits: int, total: int, wave_bonuses: int, perfect_b
 	if _transitioning or GameState.is_game_over:
 		return
 	_transitioning = true
+	var run_token: int = _run_id
 	SfxManager.play("stage_clear")
 	var sub: String = "HITS %d/%d  |  WAVE +%d  |  PERFECT +%d" % [hits, total, wave_bonuses, perfect_bonus]
 	_hud.show_banner("CHALLENGE COMPLETE", sub, 3.0)
-	await get_tree().create_timer(3.2).timeout
-	if not GameState.is_game_over and _in_run:
+	await get_tree().create_timer(3.2, false).timeout
+	if run_token == _run_id and not GameState.is_game_over and _in_run:
 		GameState.advance_stage()
 		_transitioning = false
 		_launch_stage(GameState.stage)
@@ -158,11 +174,12 @@ func _on_boss_defeated(award: int) -> void:
 	if _transitioning or GameState.is_game_over:
 		return
 	_transitioning = true
+	var run_token: int = _run_id
 	_shake_trauma = 1.0
 	_hud.set_boss_bar(false)
 	_hud.show_banner("DREADNOUGHT DESTROYED", "+%d  |  SHIELD RECHARGED" % award, 3.0)
-	await get_tree().create_timer(3.2).timeout
-	if not GameState.is_game_over and _in_run:
+	await get_tree().create_timer(3.2, false).timeout
+	if run_token == _run_id and not GameState.is_game_over and _in_run:
 		GameState.advance_stage()
 		_transitioning = false
 		_launch_stage(GameState.stage)
@@ -170,11 +187,12 @@ func _on_boss_defeated(award: int) -> void:
 
 func _on_player_captured(_boss: Node3D) -> void:
 	_shake_trauma = 0.8
-	_hud.show_banner("FIGHTER CAPTURED!", "DESTROY BOSS WHILE DIVING TO RESCUE", 2.2)
 	if GameState.is_game_over:
 		return
-	await get_tree().create_timer(1.5).timeout
-	if is_instance_valid(_player) and not GameState.is_game_over:
+	var run_token: int = _run_id
+	_hud.show_banner("FIGHTER CAPTURED!", "DESTROY BOSS WHILE DIVING TO RESCUE", 2.2)
+	await get_tree().create_timer(1.5, false).timeout
+	if run_token == _run_id and is_instance_valid(_player) and not GameState.is_game_over:
 		_player.respawn_single()
 
 

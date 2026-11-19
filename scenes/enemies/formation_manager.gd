@@ -110,7 +110,7 @@ func _physics_process(delta: float) -> void:
 		if _dive_timer <= 0.0 and _spawn_queue.is_empty():
 			_schedule_next_dive()
 			_dive_timer = maxf(1.2, 2.8 - float(_stage_num - 1) * 0.14)
-		if _spawn_queue.is_empty() and _units.is_empty():
+		if _spawn_queue.is_empty() and _units.is_empty() and _captured_unit == null:
 			_finished = true
 			wave_cleared.emit()
 
@@ -144,7 +144,7 @@ func _prune_units() -> void:
 	_units = alive
 	if _active_tractor_boss != null and not is_instance_valid(_active_tractor_boss):
 		_active_tractor_boss = null
-	if _captured_unit != null and not is_instance_valid(_captured_unit):
+	if _captured_unit != null and (not is_instance_valid(_captured_unit) or _captured_unit.is_queued_for_deletion() or _captured_unit.is_dead()):
 		_captured_unit = null
 
 
@@ -227,6 +227,8 @@ func _on_unit_destroyed(unit: EnemyUnit, score_award: int, drop_capsule: bool, w
 
 func _on_unit_escaped(unit: EnemyUnit) -> void:
 	_units.erase(unit)
+	if unit == _captured_unit:
+		_captured_unit = null
 	if is_challenge:
 		report_challenge_outcome(unit.challenge_wave, false)
 
@@ -235,7 +237,12 @@ func _on_capture_succeeded(_boss: EnemyUnit, captured_unit: EnemyUnit) -> void:
 	_captured_unit = captured_unit
 	captured_unit.destroyed.connect(_on_unit_destroyed)
 	captured_unit.escaped.connect(_on_unit_escaped)
-	captured_unit.rescue_docked.connect(func(_u: EnemyUnit) -> void: _captured_unit = null)
+	captured_unit.rescue_docked.connect(_on_rescue_docked)
+
+
+func _on_rescue_docked(unit: EnemyUnit) -> void:
+	if unit == _captured_unit:
+		_captured_unit = null
 
 
 func _on_tractor_finished(boss: EnemyUnit) -> void:

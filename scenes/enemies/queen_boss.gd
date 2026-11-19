@@ -12,11 +12,11 @@ class BossPartArea extends Area3D:
 	var part_name: String = "core"
 
 	func take_damage(amount: int, _from_missile: bool = false) -> void:
-		if is_instance_valid(boss_owner):
+		if not is_queued_for_deletion() and is_instance_valid(boss_owner):
 			boss_owner.apply_part_damage(part_name, amount)
 
 	func is_high_priority_lock() -> bool:
-		return true
+		return not is_queued_for_deletion()
 
 var phase: int = 1
 var core_hp: int = 60
@@ -33,6 +33,7 @@ var _hangar_timer: float = 5.0
 var _spiral_timer: float = 1.6
 var _spiral_angle: float = 0.0
 var _defeated: bool = false
+var _core_armor_carry: bool = false
 
 var _core_area: BossPartArea
 var _left_area: BossPartArea
@@ -52,6 +53,7 @@ func setup_boss(stage_num: int, player: PlayerFighter) -> void:
 	core_hp = 40 + stage_num * 4
 	_max_total_hp = left_hp + right_hp + core_hp
 	_defeated = false
+	_core_armor_carry = false
 	_entering = true
 	global_position = Vector3(0.0, 2.0, -150.0)
 	_build_parts()
@@ -134,13 +136,19 @@ func _launch_drone_squad() -> void:
 		return
 	for i: int in range(3):
 		var u: EnemyUnit = ENEMY_SCENE.instantiate()
-		get_parent().add_child(u)
+		u.top_level = true
+		u.one_shot_dive = true
+		add_child(u)
 		var spawn_pos: Vector3 = _right_area.global_position + Vector3(float(i - 1) * 1.5, 0.0, 3.0)
 		u.setup_unit(EnemyUnit.Archetype.ZAKO, 3, i, 0, spawn_pos, _player)
 		u.global_position = spawn_pos
 		u.state = EnemyUnit.State.FORMATION
 		u.start_dive(0)
-		u.destroyed.connect(func(_unit: EnemyUnit, pts: int, _drop: bool, _pos: Vector3) -> void: GameState.add_score(pts))
+		u.destroyed.connect(_on_drone_destroyed)
+
+
+func _on_drone_destroyed(_unit: EnemyUnit, pts: int, _drop: bool, _pos: Vector3) -> void:
+	GameState.add_score(pts)
 
 
 func _fire_phase2_spiral() -> void:
@@ -161,6 +169,9 @@ func _on_emp_triggered() -> void:
 	for proj: Node in get_tree().get_nodes_in_group("enemy_projectiles"):
 		if is_instance_valid(proj):
 			proj.queue_free()
+	for c: Node in get_children():
+		if c is EnemyUnit:
+			(c as EnemyUnit).apply_stun(2.0)
 
 
 func _tint_core_crimson() -> void:
@@ -173,6 +184,15 @@ func _tint_core_crimson() -> void:
 				(sub as MeshInstance3D).material_override = crimson
 
 
+func _destroy_part_area(area: BossPartArea) -> void:
+	if not is_instance_valid(area):
+		return
+	area.remove_from_group("lockable_enemies")
+	area.set_deferred("monitoring", false)
+	area.set_deferred("monitorable", false)
+	area.queue_free()
+
+
 func apply_part_damage(part_name: String, raw_damage: int) -> int:
 	if _defeated or raw_damage <= 0:
 		return 0
@@ -182,19 +202,23 @@ func apply_part_damage(part_name: String, raw_damage: int) -> int:
 			if left_hp <= 0:
 				return 0
 			left_hp = maxi(0, left_hp - raw_damage)
-			if left_hp == 0 and is_instance_valid(_left_area):
-				_left_area.queue_free()
+			if left_hp == 0:
+				_destroy_part_area(_left_area)
 				SfxManager.play("explode")
 		"hangar":
 			if right_hp <= 0:
 				return 0
 			right_hp = maxi(0, right_hp - raw_damage)
-			if right_hp == 0 and is_instance_valid(_right_area):
-				_right_area.queue_free()
+			if right_hp == 0:
+				_destroy_part_area(_right_area)
 				SfxManager.play("explode")
 		"core":
 			if phase == 1:
-				actual = maxi(1, int(floor(float(raw_damage) * 0.5)))
+				if raw_damage == 1:
+					_core_armor_carry = not _core_armor_carry
+					actual = 0 if _core_armor_carry else 1
+				else:
+					actual = int(floor(float(raw_damage) * 0.5))
 			core_hp = maxi(0, core_hp - actual)
 	if phase == 1 and left_hp <= 0 and right_hp <= 0:
 		phase = 2
@@ -204,6 +228,7 @@ func apply_part_damage(part_name: String, raw_damage: int) -> int:
 	boss_hp_changed.emit(get_total_hp_ratio(), phase)
 	if core_hp <= 0:
 		_defeated = true
+		_destroy_part_area(_core_area)
 		var award: int = 5000 * maxi(1, int(_stage_num / 5))
 		GameState.add_score(award)
 		GameState.grant_powerup(GameState.PowerupType.SHIELD)

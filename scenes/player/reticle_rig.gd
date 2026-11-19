@@ -34,7 +34,7 @@ func _make_ring(inner_r: float, outer_r: float, col: Color) -> MeshInstance3D:
 
 func update_aim(ship_pos: Vector3, move_vec: Vector2, fine_aim: Vector2) -> void:
 	_ship_origin = ship_pos
-	var yaw: float = clampf(-(move_vec.x * 0.55 + fine_aim.x) * MAX_LEAD_RAD, -MAX_LEAD_RAD, MAX_LEAD_RAD)
+	var yaw: float = clampf((move_vec.x * 0.55 + fine_aim.x) * MAX_LEAD_RAD, -MAX_LEAD_RAD, MAX_LEAD_RAD)
 	var pitch: float = clampf((move_vec.y * 0.55 - fine_aim.y) * MAX_LEAD_RAD, -MAX_LEAD_RAD, MAX_LEAD_RAD)
 	_aim_dir = Vector3(sin(yaw), sin(pitch), -1.0).normalized()
 	if is_instance_valid(_near_mesh):

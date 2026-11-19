@@ -13,6 +13,7 @@ var homing_target: Node3D = null
 var _speed: float = 120.0
 var _age: float = 0.0
 var _visual: Node3D = null
+var _consumed: bool = false
 
 
 func _ready() -> void:
@@ -75,7 +76,14 @@ func step_motion(delta: float) -> void:
 
 
 func _on_area_entered(area: Area3D) -> void:
+	if _consumed or area.is_queued_for_deletion():
+		return
+	if area is EnemyUnit:
+		var eu: EnemyUnit = area as EnemyUnit
+		if eu.is_dead() or eu.state == EnemyUnit.State.RESCUED_DOCKING:
+			return
 	if kind != Kind.ENEMY_ORB and area.has_method("take_damage"):
+		_consumed = true
 		area.call("take_damage", damage, kind == Kind.HOMING_MISSILE)
 		if kind == Kind.PLAYER_LASER:
 			GameState.add_lockon_energy(6.0)
@@ -83,6 +91,9 @@ func _on_area_entered(area: Area3D) -> void:
 
 
 func _on_body_entered(body: Node3D) -> void:
+	if _consumed:
+		return
 	if kind == Kind.ENEMY_ORB and body.has_method("apply_damage"):
+		_consumed = true
 		body.call("apply_damage", global_position.x)
 		queue_free()

@@ -34,6 +34,7 @@ var slot_world: Vector3 = Vector3(0.0, 0.0, -48.0)
 var speed_mult: float = 1.0
 var escort_count_on_dive: int = 0
 var captured_child: EnemyUnit = null
+var one_shot_dive: bool = false
 
 var _player: PlayerFighter = null
 var _visual: Node3D = null
@@ -133,8 +134,19 @@ func is_high_priority_lock() -> bool:
 	return state == State.DIVING or state == State.TRACTOR_BEAM or archetype == Archetype.BOSS_GALAGA
 
 
+func is_dead() -> bool:
+	return _dead
+
+
+func _mark_dead_and_unlink() -> void:
+	_dead = true
+	remove_from_group("lockable_enemies")
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
+
+
 func _physics_process(delta: float) -> void:
-	if _dead:
+	if _dead or GameState.is_game_over:
 		return
 	if _stun_timer > 0.0:
 		_stun_timer = maxf(0.0, _stun_timer - delta)
@@ -163,6 +175,11 @@ func _physics_process(delta: float) -> void:
 				_fired_in_dive = true
 				_fire_enemy_orb()
 			if _t >= 1.0:
+				if one_shot_dive:
+					_mark_dead_and_unlink()
+					escaped.emit(self)
+					queue_free()
+					return
 				state = State.RETURNING
 				global_position = Vector3(slot_world.x, slot_world.y + 16.0, -90.0)
 		State.TRACTOR_BEAM:
@@ -191,6 +208,7 @@ func _physics_process(delta: float) -> void:
 			_t += delta * 0.55 * speed_mult
 			global_position = _dive_start.lerp(Vector3(_dive_target.x, _dive_target.y, 14.0), _t)
 			if _t >= 1.0:
+				_mark_dead_and_unlink()
 				escaped.emit(self)
 				queue_free()
 				return
@@ -208,6 +226,7 @@ func _physics_process(delta: float) -> void:
 			_t += delta * 0.24 * speed_mult
 			global_position = WavePatterns.sample_challenge_path(challenge_wave, _t)
 			if _t >= 1.0:
+				_mark_dead_and_unlink()
 				escaped.emit(self)
 				queue_free()
 				return
@@ -233,9 +252,9 @@ func _handle_player_captured() -> void:
 
 
 func complete_rescue_dock() -> void:
-	if _dead:
+	if _dead or GameState.is_game_over:
 		return
-	_dead = true
+	_mark_dead_and_unlink()
 	GameState.set_fighter_mode(GameState.FighterMode.DUAL)
 	GameState.add_score(1000)
 	SfxManager.play("dock")
@@ -267,10 +286,10 @@ func take_damage(amount: int, _from_missile: bool = false) -> void:
 			_rebuild_visual(true)
 		SfxManager.play("hit")
 		return
-	_dead = true
+	_mark_dead_and_unlink()
 	_despawn_beam()
 	var was_diving: bool = (state == State.DIVING or state == State.TRACTOR_BEAM)
-	if is_instance_valid(captured_child) and captured_child.state == State.CAPTURED_ATTACHED:
+	if is_instance_valid(captured_child) and not captured_child.is_dead() and captured_child.state == State.CAPTURED_ATTACHED:
 		if was_diving:
 			captured_child.state = State.RESCUED_DOCKING
 			captured_child.remove_from_group("lockable_enemies")

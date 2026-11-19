@@ -1,4 +1,5 @@
 .godot/
 *.import
+*.uid
 export_presets.cfg
 .superpowers/
