@@ -54,8 +54,9 @@ func tick_beam(delta: float, player: PlayerFighter) -> bool:
 	if not is_instance_valid(player) or player.is_captured or player.invuln_timer > 0.0:
 		_dwell = maxf(0.0, _dwell - delta * 2.0)
 		return false
-	var lateral: float = Vector2(player.global_position.x - global_position.x, player.global_position.y - global_position.y).length()
-	if lateral <= BEAM_RADIUS_AT_PLAYER and absf(player.global_position.z - (global_position.z + 14.0)) <= 4.0:
+	var local_pos: Vector3 = to_local(player.global_position)
+	var lateral: float = Vector2(local_pos.x, local_pos.y).length()
+	if lateral <= BEAM_RADIUS_AT_PLAYER and absf(local_pos.z - 14.0) <= 4.0:
 		_dwell += delta
 		if _dwell >= CAPTURE_DWELL:
 			_dwell = 0.0

@@ -60,6 +60,8 @@ static func build_player_ship(tint: Color = Color(0.15, 0.9, 1.0)) -> Node3D:
 
 
 static func build_enemy_mesh(archetype: int, damaged_boss: bool = false) -> Node3D:
+	if archetype != 0 and archetype != 1 and archetype != 2:
+		return build_player_ship(Color(1.0, 0.15, 0.22))
 	var root := Node3D.new()
 	match archetype:
 		0: # Zako (Bee) - Neon Amber
@@ -81,8 +83,6 @@ static func build_enemy_mesh(archetype: int, damaged_boss: bool = false) -> Node
 			_add_box(root, Vector3(1.4, 0.9, 1.6), Vector3(0, 0, 0), armor)
 			_add_box(root, Vector3(2.8, 0.22, 0.95), Vector3(0, 0.15, -0.15), armor)
 			_add_prism(root, Vector3(0.9, 0.75, 0.7), Vector3(0, 0.65, 0.15), crown)
-		_: # Captured Red Fighter
-			return build_player_ship(Color(1.0, 0.15, 0.22))
 	return root
 
 

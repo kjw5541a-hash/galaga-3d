@@ -44,6 +44,7 @@ var _dive_start: Vector3 = Vector3.ZERO
 var _dive_target: Vector3 = Vector3.ZERO
 var _dive_side: float = 1.0
 var _tractor_hold: float = 0.0
+var _tractor_aim_y: float = 0.0
 var _stun_timer: float = 0.0
 var _fired_in_dive: bool = false
 var _dead: bool = false
@@ -121,6 +122,7 @@ func start_tractor_dive() -> void:
 	_dive_start = global_position
 	var px: float = _player.global_position.x if is_instance_valid(_player) else 0.0
 	var py: float = _player.global_position.y if is_instance_valid(_player) else 0.0
+	_tractor_aim_y = py
 	_dive_target = Vector3(clampf(px, -10.0, 10.0), clampf(py + 3.0, -4.0, 6.0), -14.0)
 
 
@@ -190,6 +192,7 @@ func _physics_process(delta: float) -> void:
 				if not is_instance_valid(_beam):
 					_beam = TRACTOR_BEAM_SCENE.instantiate()
 					add_child(_beam)
+					_beam.rotation.x = atan2(global_position.y - _tractor_aim_y, 14.0)
 					SfxManager.play("tractor")
 				_tractor_hold += delta
 				if is_instance_valid(_player) and _beam.tick_beam(delta, _player):

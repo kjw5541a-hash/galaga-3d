@@ -82,5 +82,38 @@ func run(tree: SceneTree) -> void:
 	t.eq(gs.fighter_mode, gs.FighterMode.SINGLE, "rescue dock blocked during game over")
 	cap_go.queue_free()
 
+	# 7. Tractor beam from Boss hovering at (px, py + 3.0, -14.0) captures stationary player
+	gs.reset_run()
+	player.invuln_timer = 0.0
+	player.is_captured = false
+	player.global_position = Vector3(2.0, -1.0, 0.0)
+	var tb_boss: EnemyUnit = enemy_scene.instantiate()
+	tree.root.add_child(tb_boss)
+	tb_boss.setup_unit(EnemyUnit.Archetype.BOSS_GALAGA, 0, 0, 0, Vector3(0.0, 6.0, -54.0), player)
+	tb_boss.state = EnemyUnit.State.FORMATION
+	tb_boss.start_tractor_dive()
+	tb_boss.set("_t", 1.0)
+	tb_boss.global_position = tb_boss.get("_dive_target")
+	tb_boss._physics_process(0.4)
+	tb_boss._physics_process(0.35)
+	t.is_true(player.is_captured, "tractor beam from boss at py+3.0 captures stationary player")
+	if is_instance_valid(tb_boss.captured_child):
+		tb_boss.captured_child.queue_free()
+	tb_boss.queue_free()
+
+	# 8. PowerupCapsule ignores captured player & prevents double-pickup in one frame
+	gs.reset_run()
+	gs.emp_charges = 0
+	var cap_pickup: PowerupCapsule = load("res://scenes/pickups/powerup_capsule.tscn").instantiate()
+	tree.root.add_child(cap_pickup)
+	cap_pickup.setup(GameState.PowerupType.EMP, Vector3.ZERO, player)
+	player.is_captured = true
+	cap_pickup._on_body_entered(player)
+	t.eq(gs.emp_charges, 0, "captured player cannot collect powerup capsule")
+	player.is_captured = false
+	cap_pickup._on_body_entered(player)
+	cap_pickup._on_body_entered(player)
+	t.eq(gs.emp_charges, 1, "powerup capsule grants once even on duplicate body_entered")
+
 	player.queue_free()
 	t.finish(tree, "test_review_fixes")
