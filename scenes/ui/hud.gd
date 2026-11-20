@@ -10,6 +10,9 @@ var _score_lbl: Label
 var _hi_lbl: Label
 var _stage_lbl: Label
 var _status_lbl: Label
+var _sound_btn: Button
+var _pause_btn: Button
+var _top_controls: HBoxContainer
 var _energy_bar: ProgressBar
 var _boss_bar: ProgressBar
 var _banner_box: PanelContainer
@@ -42,7 +45,14 @@ func _ready() -> void:
 
 
 func _on_mute_changed(_muted: bool) -> void:
+	_refresh_sound_button()
 	_refresh_status()
+
+
+func _refresh_sound_button() -> void:
+	if is_instance_valid(_sound_btn):
+		_sound_btn.text = "SFX OFF" if SfxManager.is_muted else "SFX ON"
+		_sound_btn.modulate = Color(1.0, 0.45, 0.55) if SfxManager.is_muted else Color(0.45, 0.96, 1.0)
 
 
 func _on_int_status_changed(_val: int) -> void:
@@ -84,10 +94,34 @@ func _build_ui() -> void:
 	top_bar.add_child(_stage_lbl)
 	top_bar.add_child(_hi_lbl)
 
+	# Fixed top-right audio & pause controls (always accessible in desktop/mobile, landscape/portrait)
+	_top_controls = HBoxContainer.new()
+	_top_controls.anchor_left = 1.0
+	_top_controls.anchor_right = 1.0
+	_top_controls.anchor_top = 0.0
+	_top_controls.anchor_bottom = 0.0
+	_top_controls.offset_left = -182
+	_top_controls.offset_right = -18
+	_top_controls.offset_top = 50
+	_top_controls.offset_bottom = 82
+	_top_controls.alignment = BoxContainer.ALIGNMENT_END
+	_top_controls.add_theme_constant_override("separation", 8)
+	add_child(_top_controls)
+
+	_sound_btn = _make_top_button("SFX ON")
+	_sound_btn.pressed.connect(func() -> void: SfxManager.toggle_mute())
+	_pause_btn = _make_top_button("||")
+	_pause_btn.custom_minimum_size = Vector2(40, 30)
+	_pause_btn.pressed.connect(func() -> void: pause_toggle_requested.emit())
+	_top_controls.add_child(_sound_btn)
+	_top_controls.add_child(_pause_btn)
+	_refresh_sound_button()
+
 	_boss_bar = ProgressBar.new()
-	_boss_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_boss_bar.offset_left = 260
-	_boss_bar.offset_right = -260
+	_boss_bar.anchor_left = 0.22
+	_boss_bar.anchor_right = 0.78
+	_boss_bar.anchor_top = 0.0
+	_boss_bar.anchor_bottom = 0.0
 	_boss_bar.offset_top = 56
 	_boss_bar.offset_bottom = 74
 	_boss_bar.max_value = 100.0
@@ -155,8 +189,21 @@ func _build_ui() -> void:
 
 	_touch_controls = TouchControls.new()
 	add_child(_touch_controls)
-	_touch_controls.pause_tapped.connect(func() -> void: pause_toggle_requested.emit())
-	_touch_controls.mute_tapped.connect(func() -> void: SfxManager.toggle_mute())
+
+
+func _make_top_button(txt: String) -> Button:
+	var b := Button.new()
+	b.text = txt
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(88, 30)
+	b.add_theme_font_size_override("font_size", 14)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.1, 0.2, 0.72)
+	sb.border_color = Color(0.25, 0.85, 1.0, 0.55)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(6)
+	b.add_theme_stylebox_override("normal", sb)
+	return b
 
 
 func _sync_touch_visibility() -> void:
@@ -169,13 +216,14 @@ func _sync_touch_visibility() -> void:
 func _input(event: InputEvent) -> void:
 	if not _overlay_box.visible:
 		return
-	var tapped: bool = (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
-	var clicked: bool = (
-		event is InputEventMouseButton
-		and (event as InputEventMouseButton).pressed
-		and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT
-	)
-	if tapped or clicked:
+	var tap_pos := Vector2(-1.0, -1.0)
+	if event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+		tap_pos = (event as InputEventScreenTouch).position
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		tap_pos = (event as InputEventMouseButton).position
+	if tap_pos.x >= 0.0:
+		if is_instance_valid(_top_controls) and _top_controls.get_global_rect().has_point(tap_pos):
+			return
 		_trigger_overlay_confirm()
 
 
